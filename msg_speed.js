@@ -58,12 +58,13 @@ module.exports = function(RED) {
                 
                 node.circularBuffer.enq(node.msgCount); 
                 
-                // Update the status with the last message count (only if it has changed)
+                // Update the status in the editor with the last message count (only if it has changed)
                 if (node.prevTotalMsgCount != node.totalMsgCount) {
                     node.status({fill:"green",shape:"dot",text:" " + node.totalMsgCount + "/" + node.frequency });
-                    node.send({ payload: node.totalMsgCount, frequency: node.frequency });
                     node.prevTotalMsgCount = node.totalMsgCount;
                 }
+                
+                node.send({ payload: node.totalMsgCount, frequency: node.frequency });
                 
                 if (RED.settings.verbose) {
                     console.log(new Date().toISOString() + " " + node.totalMsgCount);
