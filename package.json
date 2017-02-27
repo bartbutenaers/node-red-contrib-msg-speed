@@ -1,0 +1,27 @@
+{
+    "name"         : "node-red-contrib-msg-speed",
+    "version"      : "0.0.1",
+    "description"  : "A Node Red node to measure the flow message speed",
+    "dependencies": {
+        "circular-buffer": "1.0.2",
+        "mathjs": "3.9.3"
+    },
+    "author": {
+        "name": "Bart Butenaers"
+    },
+    "license": "Apache-2.0",
+    "keywords": [ "node-red", "speed", "rate", "count" ],
+    "bugs": {
+        "url": "https://github.com/bartbutenaers/node-red-contrib-msg-speed/issues"
+    },
+    "homepage": "https://github.com/bartbutenaers/node-red-contrib-msg-speed",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/bartbutenaers/node-red-contrib-msg-speed.git"
+    },
+    "node-red"     : {
+        "nodes": {
+            "msg-speed": "msg_speed.js"
+        }
+    }
+}
