@@ -17,9 +17,6 @@ module.exports = function(RED) {
             case 'hour':
                 this.bufferSize = 60 * 60;
                 break;
-            case 'day':
-                this.bufferSize = 24 * 60 * 60;
-                break;
             default:
                 this.bufferSize = 1; // Default 'sec'
         }
