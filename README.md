@@ -28,7 +28,7 @@ Remark: The message count will be displayed on the screen:
 
 ![Timeline 4](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed4.png)
 
-Moreover the message count will be send to the output port as message payload.  An extra 'frequency' message field is also added (containing 'sec', 'min', 'hour', 'day').
+Moreover the message count will be send to the output port as message payload.  An extra 'frequency' message field is also added (containing 'sec', 'min', 'hour').
 
 Some use cases: 
 * Trigger an alarm e.g. when the message rate drops to 0 messages per minute.
@@ -37,6 +37,8 @@ Some use cases:
 ## Node configuration
 
 ### Frequency
-The frequency ('second', 'minute', 'hour', 'day') defines the interval length of the moving window.
+The frequency ('second', 'minute', 'hour') defines the interval length of the moving window.
 
-Remark: when the interval becomes longer, more calculations need to be stored into memory...
+Remark: when the interval becomes longer:
+* It will consume more memory, to store all the calculations.
+* It will take longer at startup to calculate the speed.  E.g. for frequency 'hour' the speed will become only correct after one hour (i.e. when the interval of the first hour is complete).
