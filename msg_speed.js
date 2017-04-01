@@ -44,7 +44,7 @@ module.exports = function(RED) {
 
             // Store the message count (of the previous second) in the circular buffer.  However the timer can be
             // delayed, so make sure this is done for EVERY second since the last time we got here ...
-            var seconds = Math.round((currentTime - node.startTime) / 1000); 
+            var seconds = Math.floor((currentTime - node.startTime) / 1000); 
             for(var i = 0; i < seconds; i++) {
                 // The total msg count is the sum of all message counts in the circular buffer.  Instead of summing
                 // those continiously, we will update the sum together with the buffer content.
@@ -52,6 +52,7 @@ module.exports = function(RED) {
                 //                    - message count of the first second (which is going to be removed from the buffer).
                 node.totalMsgCount += node.msgCount;
                 node.totalMsgCount -= node.circularBuffer.get(node.bufferSize-1);
+                //console.log("node.msgCount  = " + node.msgCount + " and node.totalMsgCount = " + node.totalMsgCount );
                 
                 node.circularBuffer.enq(node.msgCount); 
                 
@@ -85,11 +86,14 @@ module.exports = function(RED) {
             }           
 
             node.msgCount += 1;
+            //console.log("New msg arrived.  node.msgCount  = " + node.msgCount );
             
             analyse();
 
             // Register a new timer (with a timeout interval of 1 second), in case no msg should arrive during the next second.
             node.timer = setInterval(function() {
+                //console.log("Timer called.  node.msgCount  = " + node.msgCount );
+                
                 // Seems no msg has arrived during the last second, so register a zero count
                 analyse();
             }, 1000);
