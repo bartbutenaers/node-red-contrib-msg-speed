@@ -5,6 +5,9 @@ module.exports = function(RED) {
 
     function speed(config) {
         RED.nodes.createNode(this, config);
+        
+        this.estimationStartup = config.estimation || false;
+        this.ignoreStartup = config.ignore || false;
 
         // The buffer size depends on the frequency
         switch(config.frequency) {
@@ -23,61 +26,103 @@ module.exports = function(RED) {
 		
         this.circularBuffer = new CircularBuffer(this.bufferSize);
         
-        // Fill the buffer with zeros
-        for (var i = 0; i < this.bufferSize; i++) {
-			this.circularBuffer.enq(0);
-		}
-        
         this.frequency = config.frequency || 'sec';
         this.msgCount = 0;
+        this.prevEstimated = false;
         this.prevTotalMsgCount = 0;
         this.totalMsgCount = 0;
-        this.startTime = null;
+        this.startTime = null; // When the first (unprocessed) message has arrived
+        this.endTime = null; // When the last (unprocessed) message has arrived
         this.timer = null;
 
         var analyse = function() {
-            var currentTime = new Date().getTime();
-
             if (node.startTime == null) {
-                node.startTime = currentTime;
+                node.startTime = new Date().getTime();
             } 
-
+            
+            // Register the time when the last message has arrived (or when the last timer was called, when no message has arrived)
+            node.endTime = new Date().getTime();
+                        
+            // Calculate the time interval (in seconds) since the first (unprocessed) message has arrived
+            var seconds = (node.endTime - node.startTime) / 1000;
+            var remainder = (seconds - Math.floor(seconds)) * 1000;
+            seconds = Math.floor(seconds);
+            
+            // Correct the end time with the remainder, since the time interval since the last message (until now) is skipped in the current calculation.
+            // Otherwise timeslices will get behind, and the curve would have some overshoot (at startup) period before reaching the final speed.
+            node.endTime -= remainder;
+            
+            //console.log(seconds + " seconds between " + new Date(node.startTime).toISOString().slice(11, 23) + " and " + new Date(node.endTime).toISOString().slice(11, 23));
+            
             // Store the message count (of the previous second) in the circular buffer.  However the timer can be
             // delayed, so make sure this is done for EVERY second since the last time we got here ...
-            var seconds = Math.floor((currentTime - node.startTime) / 1000); 
+            // 10 images/2,5 seconds = 240 images/second           
             for(var i = 0; i < seconds; i++) {
-                // The total msg count is the sum of all message counts in the circular buffer.  Instead of summing
-                // those continiously, we will update the sum together with the buffer content.
+                var original = node.totalMsgCount;
+                // In the first second we store (the count of) all received messages, except the last one (that has been received in the next second).
+                // In the next second we store that remaining (single) last message.  In all later seconds (of this loop) we will store 0.
+                var added = (i == 0) ? Math.max(0, node.msgCount - 1) : Math.max(0, node.msgCount);
+
+                // Check the content of the tail buffer cell (before it is being removed by inserting a new cell at the head), if available already
+                var removed = (node.circularBuffer.size() >= node.bufferSize) ? node.circularBuffer.get(node.bufferSize-1) : 0;
+                
+                // The total msg count is the sum of all message counts in the circular buffer.  Instead of summing all those
+                // buffer cells continiously (over and over again), we will update the sum together with the buffer content.
                 // Sum = previous sum + message count of last second (which is going to be added to the buffer) 
                 //                    - message count of the first second (which is going to be removed from the buffer).
-                node.totalMsgCount += node.msgCount;
-                node.totalMsgCount -= node.circularBuffer.get(node.bufferSize-1);
-                //console.log("node.msgCount  = " + node.msgCount + " and node.totalMsgCount = " + node.totalMsgCount );
+                node.totalMsgCount = original + added - removed;
+                //console.log(node.totalMsgCount + " = " + original + " + " + added + " - " + removed);
                 
-                node.circularBuffer.enq(node.msgCount); 
+                // Store the new count in the circular buffer (which will also trigger deletion of the oldest cell at the buffer trail)
+                node.circularBuffer.enq(added); 
                 
-                // Update the status in the editor with the last message count (only if it has changed)
-                if (node.prevTotalMsgCount != node.totalMsgCount) {
-                    node.status({fill:"green",shape:"dot",text:" " + node.totalMsgCount + "/" + node.frequency });
-                    node.prevTotalMsgCount = node.totalMsgCount;
+                // When startup period exceeded, or startup period should not be ignored ...
+                if (node.ignoreStartup == false || node.circularBuffer.size() == node.circularBuffer.capacity()) {
+                    var totalMsgCount = node.totalMsgCount;
+                    var estimated = false;
+                    
+                    // Do a linear interpolation if required (only relevant in the startup period)
+                    if (node.estimationStartup == true && node.circularBuffer.size() < node.circularBuffer.capacity()) {
+                        if (node.circularBuffer.size() > 0) {
+                            totalMsgCount = Math.floor(totalMsgCount * node.circularBuffer.capacity() / node.circularBuffer.size());
+                        }
+                        estimated = true;
+                    }
+                    
+                    // Update the status in the editor with the last message count (only if it has changed), or when switching between estimated and real
+                    if (node.prevTotalMsgCount != node.totalMsgCount || node.prevEstimated != estimated) {
+                        // Show estimations in orange, and real values in green
+                        if (estimated == true) {
+                            node.status({fill:"yellow",shape:"ring",text:" " + totalMsgCount + "/" + node.frequency });
+                        }
+                        else {
+                            node.status({fill:"green",shape:"dot",text:" " + totalMsgCount + "/" + node.frequency });
+                        }
+                        node.prevTotalMsgCount = totalMsgCount;
+                    }
+                    
+                    // Send a message on the output port
+                    node.send({ payload: totalMsgCount, frequency: node.frequency });
+                    
+                    node.prevEstimated = estimated;
                 }
                 
-                node.send({ payload: node.totalMsgCount, frequency: node.frequency });
-                
-                if (RED.settings.verbose) {
-                    console.log(new Date().toISOString() + " " + node.totalMsgCount);
-                }
-                
-                // Start counting all over again (for the next seconds)
-                node.msgCount = 0;
-                node.startTime = currentTime;
+                // The message count that has already been added, shouldn't be added again the next second
+                node.msgCount = Math.max(0, node.msgCount - added);
+            }
+            
+            if (seconds > 0) {
+                // Our new second starts at the end of the previous second
+                node.startTime = node.endTime;
             }
         }
 
         var node = this;
 
-        // Initially display a 0 count
-        node.status({fill:"green",shape:"dot",text:" " + node.msgCount + "/" + node.frequency });
+        // Initially display a 0 count (except when startup period should be ignored)
+        if (node.ignoreStartup == false) {
+            node.status({fill:"green",shape:"dot",text:" " + node.msgCount + "/" + node.frequency });
+        }
 
         this.on("input", function(msg) {
             if (node.timer) {
@@ -86,7 +131,7 @@ module.exports = function(RED) {
             }           
 
             node.msgCount += 1;
-            //console.log("New msg arrived.  node.msgCount  = " + node.msgCount );
+            //console.log("New msg arrived resulting in a message count of " + node.msgCount );
             
             analyse();
 
@@ -97,6 +142,14 @@ module.exports = function(RED) {
                 // Seems no msg has arrived during the last second, so register a zero count
                 analyse();
             }, 1000);
+        });
+        
+        this.on("close",function() {   
+            if (node.timer) {
+                // Stop the previous timer, to avoid having multiple timers running in parallel after a redeploy.
+                clearInterval(node.timer);
+            }          
+            node.status({});
         });
     }
 

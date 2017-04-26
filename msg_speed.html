@@ -11,12 +11,29 @@
             <option value="min">Hour</option>
         </select>
     </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-input-estimation" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-estimation" style="width: auto">Estimate speed during startup period</label>
+    </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-input-ignore" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-ignore" style="width: auto">Ignore speed during startup period</label>
+    </div>
 </script>
 
 <script type="text/x-red" data-help-name="msg-speed">
     <p>A node to measure the flow message speed.</p>
-    <p>The speed will be measured at the specified frequency.</p>
-    <p>E.g. frequency 'hour' means that (every second) the average speed of the previous hour will be calculated.</p>
+    <p><strong>Frequency</strong></p>
+    <p>The speed will be measured at the specified frequency.
+    E.g. frequency 'hour' means that (every second) the average speed of the previous hour will be calculated.</p>
+    <p><strong>Estimate speed</strong></p>
+    <p>In case estimation is disabled, the speed will be incorrect during the startup period.
+    E.g. when every second 1 message arrives, the calculated speed will only be correct after the first minute has passed.
+    When estimation is enabled, the final speed will be estimated during the startup interval (in this example during the first minute).
+    This setting is useless when frequency is 'second' (which has no startup period) or when the 'ignore speed' checkbox is selected.</p>
+    <p><strong>Ignore speed</strong></p>
+    <p>When speed is ignored during the startup period, no messages will be send to the output port during the startup period.
+    Moreover, the node status (in the flow editor) will not display the calculated speed.</p>
 </script>
 
 <script type="text/javascript">
@@ -25,6 +42,8 @@
       defaults: {
           name: {value:""},
           frequency: {value:"sec"},
+          estimation: {value:false},
+          ignore: {value:false},
       },
       color:"#e2d96e",
       inputs: 1,
