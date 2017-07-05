@@ -64,7 +64,7 @@ This means the speed will increase during the startup period, to reach the final
 ### Frequency
 The frequency ('second', 'minute', 'hour') defines the interval length of the moving window.
 
-Caution: long intervals (like 'hour') will take more memory to store all the intermediate speed calculations (i.e. one calculation per second).
+Caution: long intervals (like 'hour' since version **0.0.4**) will take more memory to store all the intermediate speed calculations (i.e. one calculation per second).
 
 ### Estimate speed (during startup period) - Since version 0.0.3
 During the startup period, the calculated speed will be incorrect.  When estimation is activated, the final speed will be estimated during the startup period (using linear interpolation).  The graph will start from zero immediately to an estimation of the final value:
