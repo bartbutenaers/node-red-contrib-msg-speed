@@ -24,12 +24,22 @@ The process continues this way, while the moving window is discarding old messag
 ![Timeline 3](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed3.png)
 
 ## Output message
-The message speed will be send to the output port as `msg.payload`.  This payload could be visualised e.g. in a dashboard graph:
++ First output: The message speed information will be send to the first output port as `msg.payload`.  This payload could be visualised e.g. in a dashboard graph:
 
-![Speed chart](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chart.png)
+    ![Speed chart](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chart.png)
 
-An extra `msg.frequency` field is also available (containing 'sec', 'min', 'hour').
+    An extra `msg.frequency` field is also available (containing 'sec', 'min', 'hour').
++ Second output (since version 0.0.5): The original input message will be forwarded to this output port, which allows the speed node to be ***chained*** for better performance:
 
+    ![Node chain](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chain.png)
+    
+    In this example we have created a single *chain of nodes*: the decoder gets images from a camera, calculates the speed and detects number plates in the images.  The original input message is passed through all the nodes, which improves performance since the large image doesn't need to be copied to new messages.
+    
+    The same result could be achieved (in versions < 0.0.5) by using a second wire after the decoder node:
+    
+    ![Parallel chaisn](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_parallel.png)
+    
+    In the latter flow, Node-Red will copy the original input message to send a *cloned message* to the speed node.  This means that the original image also will be cloned, which has a negative impact on performance...
 ## Node status
 The message speed will be displayed as node status, in the flow editor:
 
