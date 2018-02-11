@@ -120,9 +120,9 @@ module.exports = function(RED) {
                     node.prevTotalMsgCount = totalMsgCount;
                 }
                 
-                // Send a message on the output port, when not ignored during the startup period
+                // Send a message on the first output port, when not ignored during the startup period
                 if (node.ignoreStartup == false || startup == false) {
-                    node.send({ payload: totalMsgCount, frequency: node.frequency });
+                    node.send([{ payload: totalMsgCount, frequency: node.frequency }, null]);
                 }
                 
                 node.prevStartup = startup;
@@ -157,6 +157,9 @@ module.exports = function(RED) {
                 // Seems no msg has arrived during the last second, so register a zero count
                 analyse();
             }, 1000);
+            
+            // Send the original message on the second output port
+            node.send([null, msg]);
         });
         
         this.on("close",function() {   
