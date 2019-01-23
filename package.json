@@ -1,10 +1,10 @@
 {
     "name"         : "node-red-contrib-msg-speed",
-    "version"      : "0.0.5",
+    "version"      : "0.1.0",
     "description"  : "A Node Red node to measure the flow message speed",
     "dependencies": {
         "circular-buffer": "1.0.2",
-        "mathjs": "3.9.3"
+        "mathjs": ">=3.17.0"
     },
     "author": {
         "name": "Bart Butenaers"
