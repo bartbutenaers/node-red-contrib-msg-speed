@@ -97,13 +97,14 @@ Moreover during the startup period no node status would be displayed.
 
 ## Control node via msg  - Since version 0.1.0
 The speed measurement can be controlled via *'control messages'*, which contains one of the following fields:
-+ ```msg.speed_reset = true```: resets all measurements to 0 and starts measuring all over again.
-+ ```msg.speed_pause = true```: pause the speed measurement.  This can be handy if you know that - during some time interval - the messages will be arriving differently, and therefore they should be ignored for speed calculation.  Especially in long measurement intervals, those messages could mess up the measurements for quite some time...
++ ```msg.speed_reset = true```: resets all measurements to 0 and starts measuring all over again.  This also means that there will again be a startup interval with temporary values!
++ ```msg.speed_pause = true```: pause the speed measurement.  This can be handy if you know in advance that - during some time interval - the messages will be arriving at another speed, and therefore they should be ignored for speed calculation.  Especially in long measurement intervals, those messages could mess up the measurements for quite some time...
 + ```msg.speed_resume = true```: resume the speed measurement, when it is paused currently.
 
 Example flow:
 
-![Control](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_control.png)
+![Control](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/msg-control/images/speed_control.png)
+
 ```
 [{"id":"21cc10a.4c6acf","type":"msg-speed","z":"fd20a415.a3a028","name":"","interval":"10","intervalUnit":"sec","frequency":"min","estimation":false,"ignore":false,"x":910,"y":400,"wires":[[],[]]},{"id":"c2727b62.bec668","type":"inject","z":"fd20a415.a3a028","name":"Generate msg every second","topic":"","payload":"","payloadType":"date","repeat":"1","crontab":"","once":false,"onceDelay":0.1,"x":510,"y":400,"wires":[["21cc10a.4c6acf"]]},{"id":"7fc95fbc.17bcd","type":"inject","z":"fd20a415.a3a028","name":"Reset","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":430,"y":440,"wires":[["4d0ff6d5.e9bc58"]]},{"id":"4d0ff6d5.e9bc58","type":"change","z":"fd20a415.a3a028","name":"","rules":[{"t":"set","p":"speed_reset","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":640,"y":440,"wires":[["21cc10a.4c6acf"]]},{"id":"8e34f29c.6a028","type":"inject","z":"fd20a415.a3a028","name":"Resume","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":440,"y":480,"wires":[["3f9d6138.9e0aae"]]},{"id":"3f9d6138.9e0aae","type":"change","z":"fd20a415.a3a028","name":"","rules":[{"t":"set","p":"speed_resume","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":650,"y":480,"wires":[["21cc10a.4c6acf"]]},{"id":"5460124f.6ae8cc","type":"inject","z":"fd20a415.a3a028","name":"Pause","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":430,"y":520,"wires":[["e518e1e.79fb92"]]},{"id":"e518e1e.79fb92","type":"change","z":"fd20a415.a3a028","name":"","rules":[{"t":"set","p":"speed_pause","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":640,"y":520,"wires":[["21cc10a.4c6acf"]]}]
 ```
