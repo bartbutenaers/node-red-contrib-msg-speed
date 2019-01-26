@@ -76,7 +76,7 @@ The frequency ('second', 'minute', 'hour') defines the output frequency.
 
 For example a frequency of 'hour' means that (every second) the average speed is expressed as *'messages per hour'*.
 
-### Interval  - Since version 0.0.6
+### Interval  - Since version 0.1.0
 The frequency ('second', 'minute', 'hour') defines the interval length of the moving window.  The speed will be calculated based on the messages that have arrived during that previous interval.
 
 For example an interval of '25 seconds' means that the average speed is calculated (every second), based on the messages arrived in the last 25 seconds.
@@ -95,7 +95,7 @@ During the startup period, the calculated speed will be incorrect.  When ignorin
 
 Moreover during the startup period no node status would be displayed.
 
-## Control node via msg  - Since version 0.0.6
+## Control node via msg  - Since version 0.1.0
 The speed measurement can be controlled via *'control messages'*, which contains one of the following fields:
 + ```msg.speed_reset = true```: resets all measurements to 0 and starts measuring all over again.
 + ```msg.speed_pause = true```: pause the speed measurement.  This can be handy if you know that - during some time interval - the messages will be arriving differently, and therefore they should be ignored for speed calculation.  Especially in long measurement intervals, those messages could mess up the measurements for quite some time...
