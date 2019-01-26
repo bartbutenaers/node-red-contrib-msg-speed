@@ -24,6 +24,15 @@
         </select>
     </div>
     <div class="form-row">
+        <label for="node-input-interval"><i class="fa fa-random"></i> Interval</label>
+        <input type="number" id="node-input-interval" style="width:180px;">
+        <select id="node-input-intervalUnit" style="width:120px;">
+            <option value="sec">Seconds</option>
+            <option value="min">Minutes</option>
+            <option value="hour">Hours</option>
+        </select>
+    </div>
+    <div class="form-row">
         <input type="checkbox" id="node-input-estimation" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-estimation" style="width: auto">Estimate speed during startup period</label>
     </div>
@@ -37,7 +46,10 @@
     <p>A node to measure the flow message speed.</p>
     <p><strong>Frequency</strong></p>
     <p>The speed will be measured at the specified frequency.
-    E.g. frequency 'hour' means that (every second) the average speed of the previous hour will be calculated.</p>
+    E.g. frequency 'hour' means that (every second) the average speed is expressed as message per hour.</p>
+    <p><strong>Interval</strong></p>
+    <p>The speed will be measured based on the messages that have arrived during the previous interval length.
+    E.g. interval '25 seconds' means that the average speed is calculated (every second), based on the messages arrived in the last 25 seconds.</p>
     <p><strong>Estimate speed</strong></p>
     <p>In case estimation is disabled, the speed will be incorrect during the startup period.
     E.g. when every second 1 message arrives, the calculated speed will only be correct after the first minute has passed.
@@ -46,6 +58,13 @@
     <p><strong>Ignore speed</strong></p>
     <p>When speed is ignored during the startup period, no messages will be send to the output port during the startup period.
     Moreover, the node status (in the flow editor) will not display the calculated speed.</p>
+    <p>The node can be controlled via control messages:
+    <ul>
+        <li><code>msg.speed_reset = true</code>: resets all measurements to 0 and starts measuring all over again.</li>
+        <li><code>msg.speed_pause = true</code>: pause the speed measurement.</li>
+        <li><code>msg.speed_resume = true</code>: resume the speed measurement, when it is paused currently.</li>
+    </ul>
+    </p>
 </script>
 
 <script type="text/javascript">
@@ -53,6 +72,8 @@
       category: "performance",
       defaults: {
           name: {value:""},
+          interval: {value:1, validate: function(v) { return !v || !isNaN(v) }},
+          intervalUnit: {value:"sec"},
           frequency: {value:"sec"},
           estimation: {value:false},
           ignore: {value:false},
@@ -68,5 +89,16 @@
       labelStyle: function() {
           return this.name ? "node_label_italic" : "";
       },
+      oneditprepare: function() {
+      debugger;
+      
+        // Starting from version 0.1.0 there will be new (interval & intervalUnit) fields.
+        // The value needs to correspond to the old 'frequency' field.
+        // E.g. when the frequency is 'min', then the interval needs to be 1 and the intervalUnit needs to be 'min' also.
+        if (!this.intervalUnit) {
+            $('#node-input-interval').val(1);
+            $('#node-input-intervalUnit').val(this.frequency);
+        }
+      }
     });
 </script>
