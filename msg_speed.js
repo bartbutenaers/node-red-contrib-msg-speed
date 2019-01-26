@@ -31,8 +31,6 @@ module.exports = function(RED) {
 
     function speedNode(config) {
         RED.nodes.createNode(this, config);
-        
-        debugger;
 
         this.estimationStartup = config.estimation || false;
         this.ignoreStartup = config.ignore || false;
