@@ -17,15 +17,35 @@ module.exports = function(RED) {
     "use strict";
     var CircularBuffer = require("circular-buffer");
     var Math = require("mathjs");
+    
+    function resetNode(node) {
+        node.circularBuffer = new CircularBuffer(node.bufferSize); 
+        node.msgCount = 0;
+        node.prevStartup = false;
+        node.prevTotalMsgCount = 0;
+        node.totalMsgCount = 0;
+        node.startTime = null; // When the first (unprocessed) message has arrived
+        node.endTime = null; // When the last (unprocessed) message has arrived
+        node.timer = null;
+    }
 
-    function speed(config) {
+    function speedNode(config) {
         RED.nodes.createNode(this, config);
         
+        debugger;
+
         this.estimationStartup = config.estimation || false;
         this.ignoreStartup = config.ignore || false;
-
-        // The buffer size depends on the frequency
-        switch(config.frequency) {
+        this.frequency = config.frequency;
+        // Starting from version 0.1.0 there will be new (interval & intervalUnit) fields.
+        // The value needs to correspond to the old 'frequency' field.
+        // E.g. when the frequency is 'min', then the interval needs to be 1 and the intervalUnit needs to be 'min' also.
+        this.interval = config.interval || 1;
+        this.intervalUnit = config.intervalUnit || this.frequency;
+        this.paused = false;
+        
+        // The buffer size depends on the specified intervalUnit
+        switch(this.intervalUnit) {
             case 'sec':
                 this.bufferSize = 1; 
                 break;
@@ -38,17 +58,26 @@ module.exports = function(RED) {
             default:
                 this.bufferSize = 1; // Default 'sec'
         }
-		
-        this.circularBuffer = new CircularBuffer(this.bufferSize);
         
-        this.frequency = config.frequency || 'sec';
-        this.msgCount = 0;
-        this.prevStartup = false;
-        this.prevTotalMsgCount = 0;
-        this.totalMsgCount = 0;
-        this.startTime = null; // When the first (unprocessed) message has arrived
-        this.endTime = null; // When the last (unprocessed) message has arrived
-        this.timer = null;
+        // The buffer size also depends on the specified interval length
+        this.bufferSize *= this.interval;
+        
+        // Based on the specified frequency, the calculated speed needs to be converted.
+        // E.g. interval = 15 (seconds) and frequency = seconds (= 1 second)   => speed * 1 : 15
+        // E.g. interval = 15 (seconds) and frequency = minutes (= 60 seconds) => speed * 60 : 15
+        switch(this.frequency) {
+            case 'sec':
+                this.factor = 1 / this.bufferSize; 
+                break;
+            case 'min':
+                this.factor = 60 / this.bufferSize; 
+                break;
+            case 'hour':
+                this.factor = 60 * 60 / this.bufferSize; 
+                break;
+        }
+		
+        resetNode(this);
 
         var analyse = function() {
             if (node.startTime == null) {
@@ -103,6 +132,8 @@ module.exports = function(RED) {
                     }
                 }
                 
+                var speed = Math.floor(totalMsgCount * node.factor); 
+                
                 // Update the status in the editor with the last message count (only if it has changed), or when switching between startup and real
                 if (node.prevTotalMsgCount != node.totalMsgCount || node.prevStartup != startup) {
                     // Show startup speed values in orange, and real values in green
@@ -111,18 +142,18 @@ module.exports = function(RED) {
                             node.status({fill:"yellow",shape:"ring",text:" start ignored" });
                         }
                         else {
-                            node.status({fill:"yellow",shape:"ring",text:" " + totalMsgCount + "/" + node.frequency });
+                            node.status({fill:"yellow",shape:"ring",text:" " + speed + "/" + node.frequency });
                         }
                     }
                     else {
-                        node.status({fill:"green",shape:"dot",text:" " + totalMsgCount + "/" + node.frequency });
+                        node.status({fill:"green",shape:"dot",text:" " + speed + "/" + node.frequency });
                     }
                     node.prevTotalMsgCount = totalMsgCount;
                 }
                 
                 // Send a message on the first output port, when not ignored during the startup period
                 if (node.ignoreStartup == false || startup == false) {
-                    node.send([{ payload: totalMsgCount, frequency: node.frequency }, null]);
+                    node.send([{ payload: speed, frequency: node.frequency }, null]);
                 }
                 
                 node.prevStartup = startup;
@@ -140,25 +171,79 @@ module.exports = function(RED) {
         var node = this;
 
         this.on("input", function(msg) {
-            if (node.timer) {
-                // An msg has arrived during the specified (timeout) interval, so remove the (timeout) timer.
-                clearInterval(node.timer);
-            }           
-
-            node.msgCount += 1;
-            //console.log("New msg arrived resulting in a message count of " + node.msgCount );
+            var controlMsg = false;
             
-            analyse();
-
-            // Register a new timer (with a timeout interval of 1 second), in case no msg should arrive during the next second.
-            node.timer = setInterval(function() {
-                //console.log("Timer called.  node.msgCount  = " + node.msgCount );
+            // When a reset message arrives, fill the buffer with zeros to start counting all over again.
+            // Remark: the disadvantage is that you will end up again with a startup period ...
+            if (msg.hasOwnProperty('speed_reset') && msg.speed_reset === true) {
+                resetNode(node);
                 
-                // Seems no msg has arrived during the last second, so register a zero count
-                analyse();
-            }, 1000);
+                // Stop the current timer
+                clearInterval(node.timer);
+                node.timer = null;
+                
+                node.status({fill:"yellow",shape:"ring",text:"reset"});
+                    
+                controlMsg = true;
+            }
             
-            // Send the original message on the second output port
+            // When a start message arrives, the speed measurement will be resumed
+            if (msg.hasOwnProperty('speed_resume') && msg.speed_resume === true) {
+                // Resume is only required if the node is currently paused
+                if (node.paused) {
+                    node.paused = false;
+                    
+                    // Restart the timing again as soon as the speed measurement has been resumed
+                    node.startTime = new Date().getTime();
+                    
+                    node.status({fill:"yellow",shape:"ring",text:"resumed"});
+                }
+
+                controlMsg = true;
+            }
+
+            // When a start message arrives, the speed measurement will be paused
+            if (msg.hasOwnProperty('speed_pause') && msg.speed_pause === true) {
+                node.paused = true;
+                    
+                if (node.timer) {
+                    // Stop the current timer
+                    clearInterval(node.timer);
+                    node.timer = null;
+                    
+                    node.status({fill:"yellow",shape:"ring",text:"paused"});
+                }          
+                
+                controlMsg = true;
+            }
+            
+            // Don't measure control messages (i.e. messages that contain at least one of the 3 above controlling fields)
+            if (controlMsg === true) {
+                return;
+            }
+            
+            // Only process input messages when the speed measurement isn't paused
+            if (!node.paused) {
+                if (node.timer) {
+                    // An msg has arrived during the specified (timeout) interval, so remove the (timeout) timer.
+                    clearInterval(node.timer);
+                }           
+
+                node.msgCount += 1;
+                //console.log("New msg arrived resulting in a message count of " + node.msgCount );
+                
+                analyse();
+
+                // Register a new timer (with a timeout interval of 1 second), in case no msg should arrive during the next second.
+                node.timer = setInterval(function() {
+                    //console.log("Timer called.  node.msgCount  = " + node.msgCount );
+                    
+                    // Seems no msg has arrived during the last second, so register a zero count
+                    analyse();
+                }, 1000);
+            }
+            
+            // Send the original message on the second output port (even when the speed measurement is inactive)
             node.send([null, msg]);
         });
         
@@ -166,10 +251,11 @@ module.exports = function(RED) {
             if (node.timer) {
                 // Stop the previous timer, to avoid having multiple timers running in parallel after a redeploy.
                 clearInterval(node.timer);
+                node.timer = null;
             }          
             node.status({});
         });
     }
 
-    RED.nodes.registerType("msg-speed", speed);
+    RED.nodes.registerType("msg-speed", speedNode);
 };
