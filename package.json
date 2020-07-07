@@ -10,7 +10,7 @@
         "name": "Bart Butenaers"
     },
     "license": "Apache-2.0",
-    "keywords": [ "node-red", "speed", "rate", "count" ],
+    "keywords": [ "node-red", "speed", "rate", "count", "counter", "moving", "window" ],
     "bugs": {
         "url": "https://github.com/bartbutenaers/node-red-contrib-msg-speed/issues"
     },
