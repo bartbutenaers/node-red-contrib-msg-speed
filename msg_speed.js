@@ -23,6 +23,8 @@ module.exports = function(RED) {
         
         this.estimationStartup = config.estimation || false;
         this.ignoreStartup = config.ignore || false;
+        // Migration of old nodes which don't have an interval yet (so interval is always 1)
+        this.interval = config.interval || 1;
 
         // The buffer size depends on the frequency
         switch(config.frequency) {
@@ -38,6 +40,8 @@ module.exports = function(RED) {
             default:
                 this.bufferSize = 1; // Default 'sec'
         }
+        
+        this.bufferSize *= this.interval;
 		
         this.circularBuffer = new CircularBuffer(this.bufferSize);
         
@@ -103,6 +107,9 @@ module.exports = function(RED) {
                     }
                 }
                 
+                // The period is e.g. "2 hour"
+                var period = node.interval + " " + node.frequency;
+                
                 // Update the status in the editor with the last message count (only if it has changed), or when switching between startup and real
                 if (node.prevTotalMsgCount != node.totalMsgCount || node.prevStartup != startup) {
                     // Show startup speed values in orange, and real values in green
@@ -111,18 +118,18 @@ module.exports = function(RED) {
                             node.status({fill:"yellow",shape:"ring",text:" start ignored" });
                         }
                         else {
-                            node.status({fill:"yellow",shape:"ring",text:" " + totalMsgCount + "/" + node.frequency });
+                            node.status({fill:"yellow",shape:"ring",text:" " + totalMsgCount + "/" + period });
                         }
                     }
                     else {
-                        node.status({fill:"green",shape:"dot",text:" " + totalMsgCount + "/" + node.frequency });
+                        node.status({fill:"green",shape:"dot",text:" " + totalMsgCount + "/" + period });
                     }
                     node.prevTotalMsgCount = totalMsgCount;
                 }
                 
                 // Send a message on the first output port, when not ignored during the startup period
                 if (node.ignoreStartup == false || startup == false) {
-                    node.send([{ payload: totalMsgCount, frequency: node.frequency }, null]);
+                    node.send([{ payload: totalMsgCount, frequency: period }, null]);
                 }
                 
                 node.prevStartup = startup;
