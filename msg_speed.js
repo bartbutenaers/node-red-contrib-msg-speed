@@ -23,8 +23,14 @@ module.exports = function(RED) {
         
         this.estimationStartup = config.estimation || false;
         this.ignoreStartup = config.ignore || false;
+        
         // Migration of old nodes which don't have an interval yet (so interval is always 1)
-        this.interval = config.interval || 1;
+        if(!config.interval) { 
+            this.interval = 1
+        }
+        else {
+            this.interval = parseInt(config.interval);
+        }
 
         // The buffer size depends on the frequency
         switch(config.frequency) {
