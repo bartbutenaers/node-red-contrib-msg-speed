@@ -4,7 +4,7 @@
     "description"  : "A Node Red node to measure the flow message speed",
     "dependencies": {
         "circular-buffer": "1.0.3",
-        "mathjs": "6.2.2"
+        "mathjs": "7.0.2"
     },
     "author": {
         "name": "Bart Butenaers"
