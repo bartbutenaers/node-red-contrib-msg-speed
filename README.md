@@ -6,10 +6,17 @@ Run the following npm command in your Node-RED user directory (typically ~/.node
 ```
 npm install node-red-contrib-msg-speed
 ```
+
+## Support my Node-RED developments
+
+Please buy my wife a coffee to keep her happy, while I am busy developing Node-RED stuff for you ...
+
+<a href="https://www.buymeacoffee.com/bartbutenaers" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy my wife a coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+
 ## How it works
 This node will count all messages that arrive at the input port, and calculate the message speed *every second*.  
 
-For example when the frequency is 'minute', it will count all the messages received in the *last minute*: 
+For example when the frequency is '1 minute', it will count all the messages received in the *last minute*: 
 
 ![Timeline 1](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed1.png)
 
@@ -28,7 +35,7 @@ The process continues this way, while the moving window is discarding old messag
 
     ![Speed chart](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chart.png)
 
-    An extra `msg.frequency` field is also available (containing 'sec', 'min', 'hour').
+    An extra `msg.frequency` field is also available (containing e.g. '5 sec', '20 min', '1 hour').
 + Second output (since version 0.0.5): The original input message will be forwarded to this output port, which allows the speed node to be ***chained*** for better performance:
 
     ![Node chain](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chain.png)
@@ -72,7 +79,7 @@ This means the speed will increase during the startup period, to reach the final
 ## Node configuration
 
 ### Frequency
-The frequency ('second', 'minute', 'hour') defines the interval length of the moving window.
+The frequency (e.g. '5 second', '20 minute', '1 hour') defines the interval length of the moving window.
 
 Caution: long intervals (like 'hour' since version **0.0.4**) will take more memory to store all the intermediate speed calculations (i.e. one calculation per second).
 
