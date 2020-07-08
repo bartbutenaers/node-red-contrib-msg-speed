@@ -31,11 +31,16 @@ The process continues this way, while the moving window is discarding old messag
 ![Timeline 3](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed3.png)
 
 ## Output message
-+ First output: The message speed information will be send to the first output port as `msg.payload`.  This payload could be visualised e.g. in a dashboard graph:
++ First output: The message speed information will be send to the first output port.  This payload could be visualised e.g. in a dashboard graph:
 
     ![Speed chart](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chart.png)
 
-    An extra `msg.frequency` field is also available (containing e.g. '5 sec', '20 min', '1 hour').
+   The output message contains this fields:
+   + `msg.payload` contains the measured speed, i.e. the total number of messages counted in the specified interval/frequency.
+   + `msg.frequency` contains the specified frequency ('sec', 'min' or 'hour') from the config screen.
+   + `msg.interval` contains the specified interval (e.g. 15) from the config screen, i.e. the length of the time window.
+   + `msg.intervalAndFrequency` contains the both the interval and the frequency (e.g. '5 sec', '20 min', '1 hour').
+   
 + Second output (since version 0.0.5): The original input message will be forwarded to this output port, which allows the speed node to be ***chained*** for better performance:
 
     ![Node chain](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chain.png)
