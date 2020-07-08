@@ -55,7 +55,7 @@
       defaults: {
           name: {value:""},
           frequency: {value:"sec"},
-          interval: {value:1, validate: function(v) { return v > 0}},
+          interval: {value:1, validate: function(v) { return !v || v > 0}},
           estimation: {value:false},
           ignore: {value:false},
       },
