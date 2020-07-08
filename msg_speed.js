@@ -113,29 +113,41 @@ module.exports = function(RED) {
                     }
                 }
                 
-                // The period is e.g. "2 hour"
-                var period = node.interval + " " + node.frequency;
-                
                 // Update the status in the editor with the last message count (only if it has changed), or when switching between startup and real
                 if (node.prevTotalMsgCount != node.totalMsgCount || node.prevStartup != startup) {
+                    var status;
+                    
+                    // The status contains both the interval and the frequency (e.g. "2 hour").
+                    // Except when interval is 1, then we don't show the interval (e.g. "hour" instead of "1 hour").
+                    if (node.interval === 1) {
+                        status = totalMsgCount + " / " + node.frequency;
+                    }
+                    else {
+                        status = totalMsgCount + " / " + node.interval + " " + node.frequency;
+                    }
+                    
+                    
                     // Show startup speed values in orange, and real values in green
                     if (startup == true) {
                         if (node.ignoreStartup == true) {
                             node.status({fill:"yellow",shape:"ring",text:" start ignored" });
                         }
                         else {
-                            node.status({fill:"yellow",shape:"ring",text:" " + totalMsgCount + "/" + period });
+                            node.status({fill:"yellow",shape:"ring",text:status });
                         }
                     }
                     else {
-                        node.status({fill:"green",shape:"dot",text:" " + totalMsgCount + "/" + period });
+                        node.status({fill:"green",shape:"dot",text:status });
                     }
+                    
                     node.prevTotalMsgCount = totalMsgCount;
                 }
                 
                 // Send a message on the first output port, when not ignored during the startup period
                 if (node.ignoreStartup == false || startup == false) {
-                    node.send([{ payload: totalMsgCount, frequency: period }, null]);
+                    // Remark: in contradiction to the node status, we always add the interval (even if it is 1) in the msg.intervalAndFrequency
+                    // Because the name of the field explains that the interval is always included.
+                    node.send([{ payload: totalMsgCount, frequency: node.frequency, interval: node.interval, intervalAndFrequency: node.interval + " " + node.frequency }, null]);
                 }
                 
                 node.prevStartup = startup;
