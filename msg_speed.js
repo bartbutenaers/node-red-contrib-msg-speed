@@ -32,6 +32,7 @@ module.exports = function(RED) {
 
     function speedNode(config) {
         RED.nodes.createNode(this, config);
+        this.frequency = config.frequency;
         
         // For older nodes, this property will be undefined
         if (config.pauseAtStartup == true) {
