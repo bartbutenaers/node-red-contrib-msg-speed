@@ -41,7 +41,7 @@ The process continues this way, while the moving window is discarding old messag
    + `msg.interval` contains the specified interval (e.g. 15) from the config screen, i.e. the length of the time window.
    + `msg.intervalAndFrequency` contains the both the interval and the frequency (e.g. '5 sec', '20 min', '1 hour').
    
-+ Second output (since version 0.0.5): The original input message will be forwarded to this output port, which allows the speed node to be ***chained*** for better performance:
++ Second output: The original input message will be forwarded to this output port, which allows the speed node to be ***chained*** for better performance:
 
     ![Node chain](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chain.png)
     
@@ -84,21 +84,40 @@ This means the speed will increase during the startup period, to reach the final
 ## Node configuration
 
 ### Frequency
+<<<<<<< HEAD
 The frequency (e.g. '5 second', '20 minute', '1 hour') defines the interval length of the moving window.
+For example a frequency of '25 seconds' means that the average speed is calculated (every second), based on the messages arrived in the last 25 seconds.
 
-Caution: long intervals (like 'hour' since version **0.0.4**) will take more memory to store all the intermediate speed calculations (i.e. one calculation per second).
+Caution: long intervals (like 'hour') will take more memory to store all the intermediate speed calculations (i.e. one calculation per second).
 
-### Estimate speed (during startup period) - Since version 0.0.3
+### Estimate speed (during startup period)
 During the startup period, the calculated speed will be incorrect.  When estimation is activated, the final speed will be estimated during the startup period (using linear interpolation).  The graph will start from zero immediately to an estimation of the final value:
 
 ![Estimation](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/estimation.png)
 
 Caution: estimation is very useful if the message rate is stable.  However when the message rate is very unpredictable, the estimation will result in incorrect values.  In the latter case it might be advised to enable 'ignore speed during startup'.
 
-### Ignore speed (during startup period)  - Since version 0.0.3
+### Ignore speed (during startup period)
 During the startup period, the calculated speed will be incorrect.  When ignoring speed is activated, no messages will be send on the output port during the startup period.  This way it can be avoided that faulty speed values are generated.
 
 Moreover during the startup period no node status would be displayed.
+
+### Pause measurements at startup
+When selected, this node will be paused automatically at startup.  This means that the measurement calculation needs to be resumed explicit via a control message.
+
+## Control node via msg
+The speed measurement can be controlled via *'control messages'*, which contains one of the following fields:
++ ```msg.node_reset = true```: resets all measurements to 0 and starts measuring all over again.  This also means that there will again be a startup interval with temporary values!
++ ```msg.node_pause = true```: pause the speed measurement.  This can be handy if you know in advance that - during some time interval - the messages will be arriving at another speed, and therefore they should be ignored for speed calculation.  Especially in long measurement intervals, those messages could mess up the measurements for quite some time...
++ ```msg.node_resume = true```: resume the speed measurement, when it is paused currently.
+
+Example flow:
+
+![Msg control](https://user-images.githubusercontent.com/14224149/103175344-9dbb5d00-4869-11eb-9389-7d85588a8862.png)
+
+```
+[{"id":"21cc10a.4c6acf","type":"msg-speed","z":"7f1827bd.8acfe8","name":"","frequency":"sec","interval":"10","estimation":false,"ignore":false,"pauseAtStartup":true,"x":750,"y":1000,"wires":[["2af39912.a74596"],[]]},{"id":"c2727b62.bec668","type":"inject","z":"7f1827bd.8acfe8","name":"Generate msg every second","repeat":"1","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":350,"y":1000,"wires":[["21cc10a.4c6acf"]]},{"id":"7fc95fbc.17bcd","type":"inject","z":"7f1827bd.8acfe8","name":"Reset","repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":270,"y":1040,"wires":[["4d0ff6d5.e9bc58"]]},{"id":"4d0ff6d5.e9bc58","type":"change","z":"7f1827bd.8acfe8","name":"","rules":[{"t":"set","p":"node_reset","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":470,"y":1040,"wires":[["21cc10a.4c6acf"]]},{"id":"8e34f29c.6a028","type":"inject","z":"7f1827bd.8acfe8","name":"Resume","repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":280,"y":1080,"wires":[["3f9d6138.9e0aae"]]},{"id":"3f9d6138.9e0aae","type":"change","z":"7f1827bd.8acfe8","name":"","rules":[{"t":"set","p":"node_resume","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":480,"y":1080,"wires":[["21cc10a.4c6acf"]]},{"id":"5460124f.6ae8cc","type":"inject","z":"7f1827bd.8acfe8","name":"Pause","repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":270,"y":1120,"wires":[["e518e1e.79fb92"]]},{"id":"e518e1e.79fb92","type":"change","z":"7f1827bd.8acfe8","name":"","rules":[{"t":"set","p":"node_pause","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":480,"y":1120,"wires":[["21cc10a.4c6acf"]]},{"id":"2af39912.a74596","type":"debug","z":"7f1827bd.8acfe8","name":"Speed","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"payload","targetType":"msg","statusVal":"","statusType":"auto","x":930,"y":1000,"wires":[]}]
+```
 
 ## Use cases
 * Trigger an alarm e.g. when the message rate drops to 0 messages per minute.

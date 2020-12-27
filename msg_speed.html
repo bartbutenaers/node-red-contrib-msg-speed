@@ -32,6 +32,10 @@
         <input type="checkbox" id="node-input-ignore" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-ignore" style="width: auto">Ignore speed during startup period</label>
     </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-input-pauseAtStartup" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-pauseAtStartup" style="width: auto">Pause measurements at startup</label>
+    </div>
 </script>
 
 <script type="text/x-red" data-help-name="msg-speed">
@@ -47,6 +51,15 @@
     <p><strong>Ignore speed</strong></p>
     <p>When speed is ignored during the startup period, no messages will be send to the output port during the startup period.
     Moreover, the node status (in the flow editor) will not display the calculated speed.</p>
+    <p><strong>Pause measurements at startup</strong></p>
+    <p>When selected, this node will be paused automatically at startup (which means it needs to be resumed via a control message).</p>    
+    <p>The node can be controlled via control messages:
+    <ul>
+        <li><code>msg.node_reset = true</code>: resets all measurements and starts measuring all over again (incl. startup period).</li>
+        <li><code>msg.node_pause = true</code>: pause the current speed measurement (i.e. neglect arriving input messages).</li>
+        <li><code>msg.node_resume = true</code>: resume the speed measurement, in case it is paused currently.</li>
+    </ul>
+    </p>
 </script>
 
 <script type="text/javascript">
@@ -58,6 +71,7 @@
           interval: {value:1, validate: function(v) { return !v || v > 0}},
           estimation: {value:false},
           ignore: {value:false},
+          pauseAtStartup: {value:false}
       },
       color:"#e2d96e",
       inputs: 1,
