@@ -51,6 +51,8 @@
     <p><strong>Ignore speed</strong></p>
     <p>When speed is ignored during the startup period, no messages will be send to the output port during the startup period.
     Moreover, the node status (in the flow editor) will not display the calculated speed.</p>
+    <p><strong>Pause measurements at startup</strong></p>
+    <p>When selected, this node will be paused automatically at startup (which means it needs to be resumed via a control message).</p>    
     <p>The node can be controlled via control messages:
     <ul>
         <li><code>msg.node_reset = true</code>: resets all measurements and starts measuring all over again (incl. startup period).</li>
