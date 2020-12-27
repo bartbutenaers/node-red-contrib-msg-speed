@@ -6,10 +6,17 @@ Run the following npm command in your Node-RED user directory (typically ~/.node
 ```
 npm install node-red-contrib-msg-speed
 ```
+
+## Support my Node-RED developments
+
+Please buy my wife a coffee to keep her happy, while I am busy developing Node-RED stuff for you ...
+
+<a href="https://www.buymeacoffee.com/bartbutenaers" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy my wife a coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+
 ## How it works
 This node will count all messages that arrive at the input port, and calculate the message speed *every second*.  
 
-For example when the frequency is 'minute', it will count all the messages received in the *last minute*: 
+For example when the frequency is '1 minute', it will count all the messages received in the *last minute*: 
 
 ![Timeline 1](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed1.png)
 
@@ -24,12 +31,17 @@ The process continues this way, while the moving window is discarding old messag
 ![Timeline 3](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed3.png)
 
 ## Output message
-+ First output: The message speed information will be send to the first output port as `msg.payload`.  This payload could be visualised e.g. in a dashboard graph:
++ First output: The message speed information will be send to the first output port.  This payload could be visualised e.g. in a dashboard graph:
 
     ![Speed chart](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chart.png)
 
-    An extra `msg.frequency` field is also available (containing 'sec', 'min', 'hour').
-+ Second output (since version 0.0.5): The original input message will be forwarded to this output port, which allows the speed node to be ***chained*** for better performance:
+   The output message contains this fields:
+   + `msg.payload` contains the measured speed, i.e. the total number of messages counted in the specified interval/frequency.
+   + `msg.frequency` contains the specified frequency ('sec', 'min' or 'hour') from the config screen.
+   + `msg.interval` contains the specified interval (e.g. 15) from the config screen, i.e. the length of the time window.
+   + `msg.intervalAndFrequency` contains the both the interval and the frequency (e.g. '5 sec', '20 min', '1 hour').
+   
++ Second output: The original input message will be forwarded to this output port, which allows the speed node to be ***chained*** for better performance:
 
     ![Node chain](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/speed_chain.png)
     
@@ -72,42 +84,36 @@ This means the speed will increase during the startup period, to reach the final
 ## Node configuration
 
 ### Frequency
-The frequency ('second', 'minute', 'hour') defines the output frequency. 
+<<<<<<< HEAD
+The frequency (e.g. '5 second', '20 minute', '1 hour') defines the interval length of the moving window.
+For example a frequency of '25 seconds' means that the average speed is calculated (every second), based on the messages arrived in the last 25 seconds.
 
-For example a frequency of 'hour' means that (every second) the average speed is expressed as *'messages per hour'*.
+Caution: long intervals (like 'hour') will take more memory to store all the intermediate speed calculations (i.e. one calculation per second).
 
-### Interval  - Since version 0.1.0
-The frequency ('second', 'minute', 'hour') defines the interval length of the moving window.  The speed will be calculated based on the messages that have arrived during that previous interval.
-
-For example an interval of '25 seconds' means that the average speed is calculated (every second), based on the messages arrived in the last 25 seconds.
-
-Caution: long intervals (like 'hour' since version **0.0.4**) will take more memory to store all the intermediate speed calculations (i.e. one calculation per second).
-
-### Estimate speed (during startup period) - Since version 0.0.3
+### Estimate speed (during startup period)
 During the startup period, the calculated speed will be incorrect.  When estimation is activated, the final speed will be estimated during the startup period (using linear interpolation).  The graph will start from zero immediately to an estimation of the final value:
 
 ![Estimation](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/estimation.png)
 
 Caution: estimation is very useful if the message rate is stable.  However when the message rate is very unpredictable, the estimation will result in incorrect values.  In the latter case it might be advised to enable 'ignore speed during startup'.
 
-### Ignore speed (during startup period)  - Since version 0.0.3
+### Ignore speed (during startup period)
 During the startup period, the calculated speed will be incorrect.  When ignoring speed is activated, no messages will be send on the output port during the startup period.  This way it can be avoided that faulty speed values are generated.
 
 Moreover during the startup period no node status would be displayed.
 
-## Control node via msg  - Since version 0.1.0
+## Control node via msg
 The speed measurement can be controlled via *'control messages'*, which contains one of the following fields:
-+ ```msg.speed_reset = true```: resets all measurements to 0 and starts measuring all over again.  This also means that there will again be a startup interval with temporary values!
-+ ```msg.speed_pause = true```: pause the speed measurement.  This can be handy if you know in advance that - during some time interval - the messages will be arriving at another speed, and therefore they should be ignored for speed calculation.  Especially in long measurement intervals, those messages could mess up the measurements for quite some time...
-+ ```msg.speed_resume = true```: resume the speed measurement, when it is paused currently.
++ ```msg.node_reset = true```: resets all measurements to 0 and starts measuring all over again.  This also means that there will again be a startup interval with temporary values!
++ ```msg.node_pause = true```: pause the speed measurement.  This can be handy if you know in advance that - during some time interval - the messages will be arriving at another speed, and therefore they should be ignored for speed calculation.  Especially in long measurement intervals, those messages could mess up the measurements for quite some time...
++ ```msg.node_resume = true```: resume the speed measurement, when it is paused currently.
 
 Example flow:
 
 ![Control](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/msg-control/images/speed_control.png)
 
 ```
-[{"id":"21cc10a.4c6acf","type":"msg-speed","z":"fd20a415.a3a028","name":"","interval":"10","intervalUnit":"sec","frequency":"min","estimation":false,"ignore":false,"x":910,"y":400,"wires":[[],[]]},{"id":"c2727b62.bec668","type":"inject","z":"fd20a415.a3a028","name":"Generate msg every second","topic":"","payload":"","payloadType":"date","repeat":"1","crontab":"","once":false,"onceDelay":0.1,"x":510,"y":400,"wires":[["21cc10a.4c6acf"]]},{"id":"7fc95fbc.17bcd","type":"inject","z":"fd20a415.a3a028","name":"Reset","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":430,"y":440,"wires":[["4d0ff6d5.e9bc58"]]},{"id":"4d0ff6d5.e9bc58","type":"change","z":"fd20a415.a3a028","name":"","rules":[{"t":"set","p":"speed_reset","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":640,"y":440,"wires":[["21cc10a.4c6acf"]]},{"id":"8e34f29c.6a028","type":"inject","z":"fd20a415.a3a028","name":"Resume","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":440,"y":480,"wires":[["3f9d6138.9e0aae"]]},{"id":"3f9d6138.9e0aae","type":"change","z":"fd20a415.a3a028","name":"","rules":[{"t":"set","p":"speed_resume","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":650,"y":480,"wires":[["21cc10a.4c6acf"]]},{"id":"5460124f.6ae8cc","type":"inject","z":"fd20a415.a3a028","name":"Pause","topic":"","payload":"","payloadType":"date","repeat":"","crontab":"","once":false,"onceDelay":0.1,"x":430,"y":520,"wires":[["e518e1e.79fb92"]]},{"id":"e518e1e.79fb92","type":"change","z":"fd20a415.a3a028","name":"","rules":[{"t":"set","p":"speed_pause","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":640,"y":520,"wires":[["21cc10a.4c6acf"]]}]
-```
+[{"id":"21cc10a.4c6acf","type":"msg-speed","z":"7f1827bd.8acfe8","name":"","frequency":"sec","interval":"10","estimation":false,"ignore":false,"pauseAtStartup":true,"x":750,"y":1000,"wires":[["2af39912.a74596"],[]]},{"id":"c2727b62.bec668","type":"inject","z":"7f1827bd.8acfe8","name":"Generate msg every second","repeat":"1","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":350,"y":1000,"wires":[["21cc10a.4c6acf"]]},{"id":"7fc95fbc.17bcd","type":"inject","z":"7f1827bd.8acfe8","name":"Reset","repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":270,"y":1040,"wires":[["4d0ff6d5.e9bc58"]]},{"id":"4d0ff6d5.e9bc58","type":"change","z":"7f1827bd.8acfe8","name":"","rules":[{"t":"set","p":"node_reset","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":470,"y":1040,"wires":[["21cc10a.4c6acf"]]},{"id":"8e34f29c.6a028","type":"inject","z":"7f1827bd.8acfe8","name":"Resume","repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":280,"y":1080,"wires":[["3f9d6138.9e0aae"]]},{"id":"3f9d6138.9e0aae","type":"change","z":"7f1827bd.8acfe8","name":"","rules":[{"t":"set","p":"node_resume","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":480,"y":1080,"wires":[["21cc10a.4c6acf"]]},{"id":"5460124f.6ae8cc","type":"inject","z":"7f1827bd.8acfe8","name":"Pause","repeat":"","crontab":"","once":false,"onceDelay":0.1,"topic":"","payload":"","payloadType":"date","x":270,"y":1120,"wires":[["e518e1e.79fb92"]]},{"id":"e518e1e.79fb92","type":"change","z":"7f1827bd.8acfe8","name":"","rules":[{"t":"set","p":"node_pause","pt":"msg","to":"true","tot":"bool"}],"action":"","property":"","from":"","to":"","reg":false,"x":480,"y":1120,"wires":[["21cc10a.4c6acf"]]},{"id":"2af39912.a74596","type":"debug","z":"7f1827bd.8acfe8","name":"Speed","active":true,"tosidebar":true,"console":false,"tostatus":false,"complete":"payload","targetType":"msg","statusVal":"","statusType":"auto","x":930,"y":1000,"wires":[]}]```
 
 ## Use cases
 * Trigger an alarm e.g. when the message rate drops to 0 messages per minute.

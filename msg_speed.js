@@ -27,23 +27,34 @@ module.exports = function(RED) {
         node.startTime = null; // When the first (unprocessed) message has arrived
         node.endTime = null; // When the last (unprocessed) message has arrived
         node.timer = null;
+        // Don't set 'pause' to false, because this node can be reset (via a control msg) while it is paused
     }
 
     function speedNode(config) {
         RED.nodes.createNode(this, config);
+        
+        // For older nodes, this property will be undefined
+        if (config.pauseAtStartup == true) {
+            this.paused = true;
+            this.status({fill:"yellow",shape:"ring",text:"paused"});
+        }
+        else {
+            this.paused = false;
+        }
 
         this.estimationStartup = config.estimation || false;
         this.ignoreStartup = config.ignore || false;
-        this.frequency = config.frequency;
-        // Starting from version 0.1.0 there will be new (interval & intervalUnit) fields.
-        // The value needs to correspond to the old 'frequency' field.
-        // E.g. when the frequency is 'min', then the interval needs to be 1 and the intervalUnit needs to be 'min' also.
-        this.interval = config.interval || 1;
-        this.intervalUnit = config.intervalUnit || this.frequency;
-        this.paused = false;
         
-        // The buffer size depends on the specified intervalUnit
-        switch(this.intervalUnit) {
+        // Migration of old nodes which don't have an interval yet (so interval is always 1)
+        if(!config.interval) { 
+            this.interval = 1
+        }
+        else {
+            this.interval = parseInt(config.interval);
+        }
+
+        // The buffer size depends on the frequency
+        switch(config.frequency) {
             case 'sec':
                 this.bufferSize = 1; 
                 break;
@@ -57,23 +68,7 @@ module.exports = function(RED) {
                 this.bufferSize = 1; // Default 'sec'
         }
         
-        // The buffer size also depends on the specified interval length
         this.bufferSize *= this.interval;
-        
-        // Based on the specified frequency, the calculated speed needs to be converted.
-        // E.g. interval = 15 (seconds) and frequency = seconds (= 1 second)   => speed * 1 : 15
-        // E.g. interval = 15 (seconds) and frequency = minutes (= 60 seconds) => speed * 60 : 15
-        switch(this.frequency) {
-            case 'sec':
-                this.factor = 1 / this.bufferSize; 
-                break;
-            case 'min':
-                this.factor = 60 / this.bufferSize; 
-                break;
-            case 'hour':
-                this.factor = 60 * 60 / this.bufferSize; 
-                break;
-        }
 		
         resetNode(this);
 
@@ -130,28 +125,41 @@ module.exports = function(RED) {
                     }
                 }
                 
-                var speed = Math.floor(totalMsgCount * node.factor); 
-                
                 // Update the status in the editor with the last message count (only if it has changed), or when switching between startup and real
                 if (node.prevTotalMsgCount != node.totalMsgCount || node.prevStartup != startup) {
+                    var status;
+                    
+                    // The status contains both the interval and the frequency (e.g. "2 hour").
+                    // Except when interval is 1, then we don't show the interval (e.g. "hour" instead of "1 hour").
+                    if (node.interval === 1) {
+                        status = totalMsgCount + " / " + node.frequency;
+                    }
+                    else {
+                        status = totalMsgCount + " / " + node.interval + " " + node.frequency;
+                    }
+                    
+                    
                     // Show startup speed values in orange, and real values in green
                     if (startup == true) {
                         if (node.ignoreStartup == true) {
                             node.status({fill:"yellow",shape:"ring",text:" start ignored" });
                         }
                         else {
-                            node.status({fill:"yellow",shape:"ring",text:" " + speed + "/" + node.frequency });
+                            node.status({fill:"yellow",shape:"ring",text:status });
                         }
                     }
                     else {
-                        node.status({fill:"green",shape:"dot",text:" " + speed + "/" + node.frequency });
+                        node.status({fill:"green",shape:"dot",text:status });
                     }
+                    
                     node.prevTotalMsgCount = totalMsgCount;
                 }
                 
                 // Send a message on the first output port, when not ignored during the startup period
                 if (node.ignoreStartup == false || startup == false) {
-                    node.send([{ payload: speed, frequency: node.frequency }, null]);
+                    // Remark: in contradiction to the node status, we always add the interval (even if it is 1) in the msg.intervalAndFrequency
+                    // Because the name of the field explains that the interval is always included.
+                    node.send([{ payload: totalMsgCount, frequency: node.frequency, interval: node.interval, intervalAndFrequency: node.interval + " " + node.frequency }, null]);
                 }
                 
                 node.prevStartup = startup;
@@ -168,12 +176,12 @@ module.exports = function(RED) {
 
         var node = this;
 
-        this.on("input", function(msg) {
+	    this.on("input", function(msg) {
             var controlMsg = false;
             
             // When a reset message arrives, fill the buffer with zeros to start counting all over again.
             // Remark: the disadvantage is that you will end up again with a startup period ...
-            if (msg.hasOwnProperty('speed_reset') && msg.speed_reset === true) {
+            if (msg.hasOwnProperty('node_reset') && msg.node_reset === true) {
                 resetNode(node);
                 
                 // Stop the current timer
@@ -185,8 +193,8 @@ module.exports = function(RED) {
                 controlMsg = true;
             }
             
-            // When a start message arrives, the speed measurement will be resumed
-            if (msg.hasOwnProperty('speed_resume') && msg.speed_resume === true) {
+            // When a resume message arrives, the speed measurement will be resumed
+            if (msg.hasOwnProperty('node_resume') && msg.node_resume === true) {
                 // Resume is only required if the node is currently paused
                 if (node.paused) {
                     node.paused = false;
@@ -196,21 +204,23 @@ module.exports = function(RED) {
                     
                     node.status({fill:"yellow",shape:"ring",text:"resumed"});
                 }
-
                 controlMsg = true;
             }
-
-            // When a start message arrives, the speed measurement will be paused
-            if (msg.hasOwnProperty('speed_pause') && msg.speed_pause === true) {
-                node.paused = true;
-                    
-                if (node.timer) {
-                    // Stop the current timer
-                    clearInterval(node.timer);
-                    node.timer = null;
-                    
-                    node.status({fill:"yellow",shape:"ring",text:"paused"});
-                }          
+            
+            // When a pause message arrives, the speed measurement will be paused
+            if (msg.hasOwnProperty('node_pause') && msg.node_pause === true) {
+               // Pause is only required if the node is currently not paused already
+                if (!node.paused) {
+                    node.paused = true;
+                
+                    if (node.timer) {
+                        // Stop the current timer
+                        clearInterval(node.timer);
+                        node.timer = null;
+                        
+                        node.status({fill:"yellow",shape:"ring",text:"paused"});
+                    }
+                }                    
                 
                 controlMsg = true;
             }
@@ -226,12 +236,10 @@ module.exports = function(RED) {
                     // An msg has arrived during the specified (timeout) interval, so remove the (timeout) timer.
                     clearInterval(node.timer);
                 }           
-
                 node.msgCount += 1;
                 //console.log("New msg arrived resulting in a message count of " + node.msgCount );
                 
                 analyse();
-
                 // Register a new timer (with a timeout interval of 1 second), in case no msg should arrive during the next second.
                 node.timer = setInterval(function() {
                     //console.log("Timer called.  node.msgCount  = " + node.msgCount );

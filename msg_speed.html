@@ -16,20 +16,12 @@
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
     <div class="form-row">
-        <label for="node-input-frequency"><i class="fa fa-random"></i> Frequency</label>
+        <label for="node-input-interval"><i class="fa fa-random"></i> Frequency</label>
+        <input type="number" id="node-input-interval" style="width:100px;">
         <select id="node-input-frequency">
             <option value="sec">Second</option>
             <option value="min">Minute</option>
             <option value="hour">Hour</option>
-        </select>
-    </div>
-    <div class="form-row">
-        <label for="node-input-interval"><i class="fa fa-random"></i> Interval</label>
-        <input type="number" id="node-input-interval" style="width:180px;">
-        <select id="node-input-intervalUnit" style="width:120px;">
-            <option value="sec">Seconds</option>
-            <option value="min">Minutes</option>
-            <option value="hour">Hours</option>
         </select>
     </div>
     <div class="form-row">
@@ -40,16 +32,17 @@
         <input type="checkbox" id="node-input-ignore" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-ignore" style="width: auto">Ignore speed during startup period</label>
     </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-input-pauseAtStartup" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-pauseAtStartup" style="width: auto">Pause measurements at startup</label>
+    </div>
 </script>
 
 <script type="text/x-red" data-help-name="msg-speed">
     <p>A node to measure the flow message speed.</p>
     <p><strong>Frequency</strong></p>
     <p>The speed will be measured at the specified frequency.
-    E.g. frequency 'hour' means that (every second) the average speed is expressed as 'messages per hour'.</p>
-    <p><strong>Interval</strong></p>
-    <p>The speed will be measured based on the messages that have arrived during the previous interval length.
-    E.g. interval '25 seconds' means that the average speed is calculated (every second), based on the messages arrived in the last 25 seconds.</p>
+    E.g. frequency '2 hour' means that (every second) the average speed of the previous two hours will be calculated.</p>
     <p><strong>Estimate speed</strong></p>
     <p>In case estimation is disabled, the speed will be incorrect during the startup period.
     E.g. when every second 1 message arrives, the calculated speed will only be correct after the first minute has passed.
@@ -60,9 +53,9 @@
     Moreover, the node status (in the flow editor) will not display the calculated speed.</p>
     <p>The node can be controlled via control messages:
     <ul>
-        <li><code>msg.speed_reset = true</code>: resets all measurements and starts measuring all over again (incl. startup period).</li>
-        <li><code>msg.speed_pause = true</code>: pause the current speed measurement (i.e. neglect arriving input messages).</li>
-        <li><code>msg.speed_resume = true</code>: resume the speed measurement, in case it is paused currently.</li>
+        <li><code>msg.node_reset = true</code>: resets all measurements and starts measuring all over again (incl. startup period).</li>
+        <li><code>msg.node_pause = true</code>: pause the current speed measurement (i.e. neglect arriving input messages).</li>
+        <li><code>msg.node_resume = true</code>: resume the speed measurement, in case it is paused currently.</li>
     </ul>
     </p>
 </script>
@@ -72,11 +65,11 @@
       category: "performance",
       defaults: {
           name: {value:""},
-          interval: {value:1, validate: function(v) { return !v || !isNaN(v) }},
-          intervalUnit: {value:"sec"},
           frequency: {value:"sec"},
+          interval: {value:1, validate: function(v) { return !v || v > 0}},
           estimation: {value:false},
           ignore: {value:false},
+          pauseAtStartup: {value:false}
       },
       color:"#e2d96e",
       inputs: 1,
@@ -89,14 +82,9 @@
       labelStyle: function() {
           return this.name ? "node_label_italic" : "";
       },
-      oneditprepare: function() {      
-        // Starting from version 0.1.0 there will be new (interval & intervalUnit) fields.
-        // The value needs to correspond to the old 'frequency' field.
-        // E.g. when the frequency is 'min', then the interval needs to be 1 and the intervalUnit needs to be 'min' also.
-        if (!this.intervalUnit) {
-            $('#node-input-interval').val(1);
-            $('#node-input-intervalUnit').val(this.frequency);
-        }
+      oneditprepare: function() {
+          // Migrate old nodes which don't have an interval ye, so interval was 1 (e.g. 1 second)
+          $('#node-input-interval').val(this.interval || 1);
       }
     });
 </script>
