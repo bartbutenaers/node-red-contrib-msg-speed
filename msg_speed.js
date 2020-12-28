@@ -41,7 +41,7 @@ module.exports = function(RED) {
                 node.send([{ payload: totalMsgCount, frequency: this.frequency, interval: this.interval, intervalAndFrequency: this.interval + " " + this.frequency }, null]);
             }
             
-            changeStatus(totalMsgCount, isStartup) {
+            changeStatus(totalMsgCount, msgData, isStartup) {
                 var status;
                 
                 // The status contains both the interval and the frequency (e.g. "2 hour").
