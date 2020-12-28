@@ -75,7 +75,7 @@ For example when the speed is 1 message per second, this corresponds to a speed 
 + After the first second, the speed is 1 message per minute
 + After the second, the speed is 2 messages per minute
 + ...
-+ After one minute, the speed is 60 messages msg per minute
++ After one minute, the speed is 60 messages per minute
 
 This means the speed will increase during the startup period, to reach the final value:
 
@@ -84,14 +84,13 @@ This means the speed will increase during the startup period, to reach the final
 ## Node configuration
 
 ### Frequency
-<<<<<<< HEAD
 The frequency (e.g. '5 second', '20 minute', '1 hour') defines the interval length of the moving window.
 For example a frequency of '25 seconds' means that the average speed is calculated (every second), based on the messages arrived in the last 25 seconds.
 
 Caution: long intervals (like 'hour') will take more memory to store all the intermediate speed calculations (i.e. one calculation per second).
 
 ### Estimate speed (during startup period)
-During the startup period, the calculated speed will be incorrect.  When estimation is activated, the final speed will be estimated during the startup period (using linear interpolation).  The graph will start from zero immediately to an estimation of the final value:
+During the startup period, the calculated speed will be incorrect.  When estimation is activated, the final speed will be estimated during the startup period (using linear extrapolation).  The graph will start from zero immediately to an estimation of the final value:
 
 ![Estimation](https://raw.githubusercontent.com/bartbutenaers/node-red-contrib-msg-speed/master/images/estimation.png)
 
@@ -108,7 +107,7 @@ When selected, this node will be paused automatically at startup.  This means th
 ## Control node via msg
 The speed measurement can be controlled via *'control messages'*, which contains one of the following fields:
 + ```msg.speed_reset = true```: resets all measurements to 0 and starts measuring all over again.  This also means that there will again be a startup interval with temporary values!
-+ ```msg.speed_pause = true```: pause the speed measurement.  This can be handy if you know in advance that - during some time interval - the messages will be arriving at another speed, and therefore they should be ignored for speed calculation.  Especially in long measurement intervals, those messages could mess up the measurements for quite some time...
++ ```msg.speed_pause = true```: pause the speed measurement.  This can be handy if you know in advance that - during some time interval - the messages will be arriving at abnormal speed, and therefore they should be ignored for speed calculation.  Especially in long measurement intervals, those messages could mess up the measurements for quite some time...
 + ```msg.speed_resume = true```: resume the speed measurement, when it is paused currently.
 
 Example flow:
