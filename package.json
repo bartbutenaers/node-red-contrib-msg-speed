@@ -3,6 +3,7 @@
     "version"      : "2.0.0",
     "description"  : "A Node Red node to measure the flow message speed",
     "dependencies": {
+        "nr-msg-statistics": "^1.0.0",
         "circular-buffer": "^1.0.2",
         "mathjs": "^7.2.0"
     },
