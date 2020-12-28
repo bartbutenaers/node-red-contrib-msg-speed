@@ -70,7 +70,7 @@ module.exports = function(RED) {
     
         var messageSpeedAnalyzer = new MessageSpeedAnalyzer(config);
 
-	    this.on("input", function(msg) {
+        this.on("input", function(msg) {
             var controlMsg = false;
             
             // When a reset message arrives, fill the buffer with zeros to start counting all over again.
