@@ -25,7 +25,8 @@ module.exports = function(RED) {
             node.status({fill:"yellow",shape:"ring",text:"paused"});
         }
         
-        const MessageAnalyzer = require('./msg_analyzer.js');
+        // The real logic has been encapsulated in a separate NPM package, so it can be shared between multiple of my Node-RED nodes...
+        const MessageAnalyzer = require('nr-msg-statistics');
         
         class MessageSpeedAnalyzer extends MessageAnalyzer {
             calculateMsgStatistics(totalMsgCount, msg, originalMsgStatistics) {
