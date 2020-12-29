@@ -34,14 +34,14 @@ module.exports = function(RED) {
                 return null;
             }
     
-            sendMsg(totalMsgCount, msgData) {
+            sendMsg(totalMsgCount, newMsgStatistics) {
                 // Remark: in contradiction to the node status, we always add the interval (even if it is 1) in the msg.intervalAndFrequency
                 // Because the name of the field explains that the interval is always included.
                 // Remark: the msgData will be null for this node, since we don't pass any data to the analyse method (see below)
                 node.send([{ payload: totalMsgCount, frequency: this.frequency, interval: this.interval, intervalAndFrequency: this.interval + " " + this.frequency }, null]);
             }
             
-            changeStatus(totalMsgCount, msgData, isStartup) {
+            changeStatus(totalMsgCount, newMsgStatistics, isStartup) {
                 var status;
                 
                 // The status contains both the interval and the frequency (e.g. "2 hour").
