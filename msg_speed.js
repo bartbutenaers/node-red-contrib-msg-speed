@@ -29,28 +29,28 @@ module.exports = function(RED) {
         const MessageAnalyzer = require('nr-msg-statistics');
         
         class MessageSpeedAnalyzer extends MessageAnalyzer {
-            calculateMsgStatistics(totalMsgCount, msg, originalMsgStatistics) {
-                // No extra calculations required for speed, since the MessageAnalyzer class already counts all messages
+            calculateMsgStatistic(msg) {
+                // No extra calculations required for speed, since the MessageAnalyzer class already counts all messages.
                 return null;
             }
-    
-            sendMsg(totalMsgCount, newMsgStatistics) {
+
+            sendMsg(msgCountInBuffer, msgStatisticInBuffer) {
                 // Remark: in contradiction to the node status, we always add the interval (even if it is 1) in the msg.intervalAndFrequency
                 // Because the name of the field explains that the interval is always included.
                 // Remark: the msgData will be null for this node, since we don't pass any data to the analyse method (see below)
-                node.send([{ payload: totalMsgCount, frequency: this.frequency, interval: this.interval, intervalAndFrequency: this.interval + " " + this.frequency }, null]);
+                node.send([{ payload: msgCountInBuffer, frequency: this.frequency, interval: this.interval, intervalAndFrequency: this.interval + " " + this.frequency }, null]);
             }
-            
-            changeStatus(totalMsgCount, newMsgStatistics, isStartup) {
+     
+            changeStatus(msgCountInBuffer, msgStatisticInBuffer, isStartup) {
                 var status;
                 
                 // The status contains both the interval and the frequency (e.g. "2 hour").
                 // Except when interval is 1, then we don't show the interval (e.g. "hour" instead of "1 hour").
                 if (this.interval === 1) {
-                    status = totalMsgCount + " / " + this.frequency;
+                    status = msgCountInBuffer + " / " + this.frequency;
                 }
                 else {
-                    status = totalMsgCount + " / " + this.interval + " " + this.frequency;
+                    status = msgCountInBuffer + " / " + this.interval + " " + this.frequency;
                 }
 
                 // Show startup speed values in orange, and real values in green
@@ -100,9 +100,7 @@ module.exports = function(RED) {
                 return;
             }
             
-            // In case of speed measurements, no extra data need to be stored about the input message.
-            // Indeed the MssageAnalyzer already delivers the total msg count per interval, which is enough information to calculate the speed.
-            messageSpeedAnalyzer.process(null);
+            messageSpeedAnalyzer.process(msg);
             
             // Send the original message on the second output port (even when the speed measurement is inactive)
             node.send([null, msg]);
