@@ -1,7 +1,7 @@
 {
     "name"         : "node-red-contrib-msg-speed",
     "version"      : "2.0.0",
-    "description"  : "A Node Red node to measure the flow message speed",
+    "description"  : "A Node Red node to measure the flow message speed, i.e. the rate at which messages arrive",
     "dependencies": {
         "nr-msg-statistics": "^1.0.0"
     },
