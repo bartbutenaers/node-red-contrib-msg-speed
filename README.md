@@ -1,5 +1,5 @@
 # node-red-contrib-msg-speed
-A Node Red node for measuring flow message speed.
+A Node Red node for measuring flow message speed, i.e. the rate at which messages arrive.
 
 ## Install
 Run the following npm command in your Node-RED user directory (typically ~/.node-red):
