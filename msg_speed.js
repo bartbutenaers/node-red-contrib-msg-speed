@@ -18,6 +18,8 @@ module.exports = function(RED) {
 
     function speedNode(config) {
         RED.nodes.createNode(this, config);
+        this.config = config;
+        this.analyzerPerTopic = new Map();
         
         var node = this;
   
@@ -38,59 +40,112 @@ module.exports = function(RED) {
                 // Remark: in contradiction to the node status, we always add the interval (even if it is 1) in the msg.intervalAndFrequency
                 // Because the name of the field explains that the interval is always included.
                 // Remark: the msgData will be null for this node, since we don't pass any data to the analyse method (see below)
-                node.send([{ payload: msgCountInBuffer, frequency: this.frequency, interval: this.interval, intervalAndFrequency: this.interval + " " + this.frequency }, null]);
+                var outputMsg = { payload: msgCountInBuffer, frequency: this.frequency, interval: this.interval, intervalAndFrequency: this.interval + " " + this.frequency};
+                
+                // Sending the topic only makes sence for topic dependent statistics.  Otherwise always "all_topics" will be used...
+                if (node.config.topicDependent) {
+                    outputMsg.topic = this.topic;
+                }
+                
+                node.send([outputMsg, null]);
             }
      
             changeStatus(msgCountInBuffer, msgStatisticInBuffer, isStartup) {
                 var status;
                 
-                // The status contains both the interval and the frequency (e.g. "2 hour").
-                // Except when interval is 1, then we don't show the interval (e.g. "hour" instead of "1 hour").
-                if (this.interval === 1) {
-                    status = msgCountInBuffer + " / " + this.frequency;
-                }
-                else {
-                    status = msgCountInBuffer + " / " + this.interval + " " + this.frequency;
-                }
-
-                // Show startup speed values in orange, and real values in green
-                if (isStartup == true) {
-                    if (this.ignoreStartup == true) {
-                        node.status({fill:"yellow",shape:"ring",text:" start ignored" });
+                // It has only use to update the node status, when only a single topic is being watched
+                if (!node.config.topicDependent) {
+                    // The status contains both the interval and the frequency (e.g. "2 hour").
+                    // Except when interval is 1, then we don't show the interval (e.g. "hour" instead of "1 hour").
+                    if (this.interval === 1) {
+                        status = msgCountInBuffer + " / " + this.frequency;
                     }
                     else {
-                        node.status({fill:"yellow",shape:"ring",text:status });
+                        status = msgCountInBuffer + " / " + this.interval + " " + this.frequency;
+                    }
+
+                    // Show startup speed values in orange, and real values in green
+                    if (isStartup == true) {
+                        if (this.ignoreStartup == true) {
+                            node.status({fill:"yellow",shape:"ring",text:" start ignored" });
+                        }
+                        else {
+                            node.status({fill:"yellow",shape:"ring",text:status });
+                        }
+                    }
+                    else {
+                        node.status({fill:"green",shape:"dot",text:status });
                     }
                 }
-                else {
-                    node.status({fill:"green",shape:"dot",text:status });
-                }            
             }
         }
-    
-        var messageSpeedAnalyzer = new MessageSpeedAnalyzer(config);
 
         this.on("input", function(msg) {
             var controlMsg = false;
+
+            // When no topic-based resending (or no topic available in the msg), store all topics in the map as a single virtual topic (named 'all_topics')
+            var topic = (node.config.topicDependent && msg.topic) ? msg.topic : "all_topics";
+            
+            // Try to get an existing analyzer for this topic
+            var messageSpeedAnalyzer = node.analyzerPerTopic.get(topic);
+
+            // When no analyzer available yet (e.g. for a new topic), then create one and store it in the map
+            if (!messageSpeedAnalyzer) {
+                messageSpeedAnalyzer = new MessageSpeedAnalyzer(node.config);
+                messageSpeedAnalyzer.topic = topic;
+                node.analyzerPerTopic.set(topic, messageSpeedAnalyzer);
+                
+                // When working topic dependent, show the number of topics in the node status
+                if (node.config.topicDependent) {
+                    node.status({fill:"green",shape:"dot",text: this.analyzerPerTopic.size + " topics"});
+                }
+            }
             
             // When a reset message arrives, fill the buffer with zeros to start counting all over again.
             // Remark: the disadvantage is that you will end up again with a startup period ...
             if (msg.hasOwnProperty('speed_reset') && msg.speed_reset === true) {
-                messageSpeedAnalyzer.reset();
+                // When a topic is specified in the control msg, then only that topic will be reset.  
+                // Otherwise all topics will be reset...
+                if (msg.topic) {
+                    messageSpeedAnalyzer.reset();
+                }
+                else {
+                    node.analyzerPerTopic.forEach(function(messageSpeedAnalyzer, topic) { 
+                        messageSpeedAnalyzer.reset();
+                    })
+                }
                 node.status({fill:"yellow",shape:"ring",text:"reset"});
                 controlMsg = true;
             }
             
             // When a resume message arrives, the speed measurement will be resumed
             if (msg.hasOwnProperty('speed_resume') && msg.speed_resume === true) {
-                messageSpeedAnalyzer.resume();
+                // When a topic is specified in the control msg, then only that topic will be resumed.  
+                // Otherwise all topics will be resumed...
+                if (msg.topic) {
+                    messageSpeedAnalyzer.resume();
+                }
+                else {
+                    node.analyzerPerTopic.forEach(function(messageSpeedAnalyzer, topic) { 
+                        messageSpeedAnalyzer.resume();
+                    })
+                }
                 node.status({fill:"yellow",shape:"ring",text:"resumed"});
                 controlMsg = true;
             }
             
             // When a pause message arrives, the speed measurement will be paused
             if (msg.hasOwnProperty('speed_pause') && msg.speed_pause === true) {
-                messageSpeedAnalyzer.pause();
+                // When a topic is specified in the control msg, then only that topic will be paused.  
+                // Otherwise all topics will be paused...
+                if (msg.topic) {
+                    messageSpeedAnalyzer.pause();
+                }
+                else {
+                    node.analyzerPerTopic.forEach(function(messageSpeedAnalyzer, topic) { 
+                        messageSpeedAnalyzer.pause();
+                    })
+                }
                 node.status({fill:"yellow",shape:"ring",text:"paused"});
                 controlMsg = true;
             }
@@ -106,9 +161,14 @@ module.exports = function(RED) {
             node.send([null, msg]);
         });
         
-        this.on("close",function() {   
-            messageSpeedAnalyzer.stop();       
+        this.on("close",function() {
             node.status({});
+            
+            node.analyzerPerTopic.forEach(function(messageSpeedAnalyzer, topic) { 
+                messageSpeedAnalyzer.stop();
+            })
+
+            node.analyzerPerTopic.clear();
         });
     }
 

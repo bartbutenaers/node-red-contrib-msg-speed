@@ -36,6 +36,10 @@
         <input type="checkbox" id="node-input-pauseAtStartup" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-pauseAtStartup" style="width: auto">Pause measurements at startup</label>
     </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-input-topicDependent" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-topicDependent" style="width: auto">Topic dependent statistics</label>
+    </div>
 </script>
 
 <script type="text/x-red" data-help-name="msg-speed">
@@ -60,6 +64,9 @@
         <li><code>msg.speed_resume = true</code>: resume the speed measurement, in case it is paused currently.</li>
     </ul>
     </p>
+    <p><strong>Topic dependent statistics</strong></p>
+    <p>If enabled, the statistics will be stored per topic.  Note that this might use more system resources (e.g. RAM) in case the speed is being
+    measured across a larger time period (e.g. per hour)!</p>
 </script>
 
 <script type="text/javascript">
@@ -71,7 +78,8 @@
           interval: {value:1, validate: function(v) { return !v || v > 0}},
           estimation: {value:false},
           ignore: {value:false},
-          pauseAtStartup: {value:false}
+          pauseAtStartup: {value:false},
+          topicDependent: {value:false}
       },
       color:"#e2d96e",
       inputs: 1,
