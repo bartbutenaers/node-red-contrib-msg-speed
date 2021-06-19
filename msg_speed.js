@@ -27,6 +27,41 @@ module.exports = function(RED) {
             node.status({fill:"yellow",shape:"ring",text:"paused"});
         }
         
+        function updateTopicDependentStatus() {
+            var pausedCount = 0;
+            
+            node.analyzerPerTopic.forEach(function(messageSpeedAnalyzer, topic) {
+                if (messageSpeedAnalyzer.paused) {
+                    pausedCount++;
+                }
+            })
+            
+            // Only show the number of paused topics, when topics are being paused
+            if (pausedCount > 0) {
+                node.status({fill:"green",shape:"dot",text: node.analyzerPerTopic.size + " topics (" + pausedCount + " paused)"});
+            }
+            else {
+                node.status({fill:"green",shape:"dot",text: node.analyzerPerTopic.size + " topics"});
+            }
+        }
+        
+        function getMessageSpeedAnalyzer(topic) {
+            var messageSpeedAnalyzer = node.analyzerPerTopic.get(topic);
+            
+            if (!messageSpeedAnalyzer) {
+                messageSpeedAnalyzer = new MessageSpeedAnalyzer(node.config);
+                messageSpeedAnalyzer.topic = topic;
+                node.analyzerPerTopic.set(topic, messageSpeedAnalyzer);
+                
+                // When working topic dependent, show the (updated) number of topics in the node status
+                if (node.config.topicDependent) {
+                    updateTopicDependentStatus();
+                }
+            }
+            
+            return messageSpeedAnalyzer;
+        }
+        
         // The real logic has been encapsulated in a separate NPM package, so it can be shared between multiple of my Node-RED nodes...
         const MessageAnalyzer = require('nr-msg-statistics');
         
@@ -53,7 +88,8 @@ module.exports = function(RED) {
             changeStatus(msgCountInBuffer, msgStatisticInBuffer, isStartup) {
                 var status;
                 
-                // It has only use to update the node status, when only a single topic is being watched
+                // It has only use to update the node status (with calculated speed), when only a SINGLE TOPIC is being watched.
+                // For topic-dependent statistics are required, the status will be updated below by other triggers...
                 if (!node.config.topicDependent) {
                     // The status contains both the interval and the frequency (e.g. "2 hour").
                     // Except when interval is 1, then we don't show the interval (e.g. "hour" instead of "1 hour").
@@ -82,83 +118,86 @@ module.exports = function(RED) {
 
         this.on("input", function(msg) {
             var controlMsg = false;
-
-            // When no topic-based resending (or no topic available in the msg), store all topics in the map as a single virtual topic (named 'all_topics')
-            var topic = (node.config.topicDependent && msg.topic) ? msg.topic : "all_topics";
+            var specifiedAnalyzers = [];
             
-            // Try to get an existing analyzer for this topic
-            var messageSpeedAnalyzer = node.analyzerPerTopic.get(topic);
+            // Determine whether this is a control message
+            if ((msg.hasOwnProperty('speed_reset')  && msg.speed_reset  === true) || 
+                (msg.hasOwnProperty('speed_resume') && msg.speed_resume === true) ||
+                (msg.hasOwnProperty('speed_pause')  && msg.speed_pause  === true)) {
+                controlMsg = true;
+            }
 
-            // When no analyzer available yet (e.g. for a new topic), then create one and store it in the map
-            if (!messageSpeedAnalyzer) {
-                messageSpeedAnalyzer = new MessageSpeedAnalyzer(node.config);
-                messageSpeedAnalyzer.topic = topic;
-                node.analyzerPerTopic.set(topic, messageSpeedAnalyzer);
-                
-                // When working topic dependent, show the number of topics in the node status
-                if (node.config.topicDependent) {
-                    node.status({fill:"green",shape:"dot",text: this.analyzerPerTopic.size + " topics"});
+            if (node.config.topicDependent) {
+                if (!msg.topic || msg.topic == "") {
+                     if (controlMsg) {
+                        // When no topic has been definied in a control message, then ALL available topics need to be controlled
+                        specifiedAnalyzers = Array.from(node.analyzerPerTopic.values());
+                    }
+                    else {
+                        // All messages without topic are being collected under "all_topics"
+                        specifiedAnalyzers.push(getMessageSpeedAnalyzer("all_topics"));
+                    }
                 }
+                else {
+                    // Collect the message under its own topic
+                    specifiedAnalyzers.push(getMessageSpeedAnalyzer(msg.topic));
+                }
+            }
+            else {
+                // In topic-independent mode, all messages are being collected under "all_topics"
+                specifiedAnalyzers.push(getMessageSpeedAnalyzer("all_topics"));
+            }
+            
+            if (specifiedAnalyzers.length == 0) {
+                node.warn("No topics to be processed").
+                return;
             }
             
             // When a reset message arrives, fill the buffer with zeros to start counting all over again.
             // Remark: the disadvantage is that you will end up again with a startup period ...
             if (msg.hasOwnProperty('speed_reset') && msg.speed_reset === true) {
-                // When a topic is specified in the control msg, then only that topic will be reset.  
-                // Otherwise all topics will be reset...
-                if (msg.topic) {
+                specifiedAnalyzers.forEach(function(messageSpeedAnalyzer, topic) { 
                     messageSpeedAnalyzer.reset();
-                }
-                else {
-                    node.analyzerPerTopic.forEach(function(messageSpeedAnalyzer, topic) { 
-                        messageSpeedAnalyzer.reset();
-                    })
-                }
-                node.status({fill:"yellow",shape:"ring",text:"reset"});
-                controlMsg = true;
+                })
             }
             
             // When a resume message arrives, the speed measurement will be resumed
             if (msg.hasOwnProperty('speed_resume') && msg.speed_resume === true) {
-                // When a topic is specified in the control msg, then only that topic will be resumed.  
-                // Otherwise all topics will be resumed...
-                if (msg.topic) {
+                specifiedAnalyzers.forEach(function(messageSpeedAnalyzer, topic) { 
                     messageSpeedAnalyzer.resume();
-                }
-                else {
-                    node.analyzerPerTopic.forEach(function(messageSpeedAnalyzer, topic) { 
-                        messageSpeedAnalyzer.resume();
-                    })
-                }
-                node.status({fill:"yellow",shape:"ring",text:"resumed"});
-                controlMsg = true;
+                })
             }
             
             // When a pause message arrives, the speed measurement will be paused
             if (msg.hasOwnProperty('speed_pause') && msg.speed_pause === true) {
-                // When a topic is specified in the control msg, then only that topic will be paused.  
-                // Otherwise all topics will be paused...
-                if (msg.topic) {
+                specifiedAnalyzers.forEach(function(messageSpeedAnalyzer, topic) { 
                     messageSpeedAnalyzer.pause();
-                }
-                else {
-                    node.analyzerPerTopic.forEach(function(messageSpeedAnalyzer, topic) { 
-                        messageSpeedAnalyzer.pause();
-                    })
-                }
-                node.status({fill:"yellow",shape:"ring",text:"paused"});
-                controlMsg = true;
+                })
             }
             
             // Don't measure control messages (i.e. messages that contain at least one of the 3 above controlling fields)
-            if (controlMsg === true) {
-                return;
+            if (controlMsg) {
+                if (node.config.topicDependent) {
+                    // For every control message the topic-dependent status might have to be updated (paused, non-paused)
+                    updateTopicDependentStatus();                    
+                }
+                else {
+                    // For topic-independent there is only one topic, so show if that topic is paused.
+                    // If not paused then the speed number will be displayed in the status (see changeStatus above).
+                    if (specifiedAnalyzers[0].paused == true) {
+                        node.status({fill:"yellow",shape:"ring",text:"paused"});
+                    }
+                }
             }
+            else {
+                // Normally we should only have 1 analyzer in the array
+                specifiedAnalyzers.forEach(function(messageSpeedAnalyzer, topic) { 
+                    messageSpeedAnalyzer.process(msg);
+                })
             
-            messageSpeedAnalyzer.process(msg);
-            
-            // Send the original message on the second output port (even when the speed measurement is inactive)
-            node.send([null, msg]);
+                // Send the original message on the second output port (even when the speed measurement is inactive)
+                node.send([null, msg]);
+            }
         });
         
         this.on("close",function() {
