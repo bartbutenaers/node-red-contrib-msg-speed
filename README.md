@@ -73,6 +73,10 @@ The node status dependents on the fact whether the startup period (see next para
    + In case of topic dependent statistics, the number of topics will be displayed as node status:
 
       ![Topic node status](https://user-images.githubusercontent.com/14224149/121797366-fe740180-cc1f-11eb-8886-e2948dc40192.png)
+      
+     When one or more topics are being paused, that will be indicate in the node status:
+     
+      ![Topic paused node status](https://user-images.githubusercontent.com/14224149/122656943-6c0fb880-d15f-11eb-851d-94fd451382ba.png)
 
 The following example flow can be used, to verify how this works:
 ```
