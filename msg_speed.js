@@ -75,7 +75,12 @@ module.exports = function(RED) {
                 // Remark: in contradiction to the node status, we always add the interval (even if it is 1) in the msg.intervalAndFrequency
                 // Because the name of the field explains that the interval is always included.
                 // Remark: the msgData will be null for this node, since we don't pass any data to the analyse method (see below)
-                var outputMsg = { payload: msgCountInBuffer, frequency: this.frequency, interval: this.interval, intervalAndFrequency: this.interval + " " + this.frequency};
+                var outputMsg = { 
+                    payload:              msgCountInBuffer,
+                    frequency:            this.frequency,
+                    interval:             this.interval,
+                    intervalAndFrequency: this.interval + " " + this.frequency
+                };
                 
                 // Sending the topic only makes sence for topic dependent statistics.  Otherwise always "all_topics" will be used...
                 if (node.config.topicDependent) {
@@ -175,7 +180,7 @@ module.exports = function(RED) {
                 })
             }
             
-            // Don't measure control messages (i.e. messages that contain at least one of the 3 above controlling fields)
+            // Don't use the control messages in speed calculations (i.e. messages that contain at least one of the 3 above controlling fields)
             if (controlMsg) {
                 if (node.config.topicDependent) {
                     // For every control message the topic-dependent status might have to be updated (paused, non-paused)
@@ -191,7 +196,8 @@ module.exports = function(RED) {
             }
             else {
                 // Normally we should only have 1 analyzer in the array
-                specifiedAnalyzers.forEach(function(messageSpeedAnalyzer, topic) { 
+                specifiedAnalyzers.forEach(function(messageSpeedAnalyzer, topic) {
+                    // Use the message to do the speed calculations
                     messageSpeedAnalyzer.process(msg);
                 })
             
