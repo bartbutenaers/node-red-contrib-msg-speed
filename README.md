@@ -77,11 +77,7 @@ The node status dependents on the fact whether the startup period (see next para
      When one or more topics are being paused, that will be indicate in the node status:
      
       ![Topic paused node status](https://user-images.githubusercontent.com/14224149/122656943-6c0fb880-d15f-11eb-851d-94fd451382ba.png)
-
-The following example flow can be used, to verify how this works:
-```
-[{"id":"a50d24c0.afaf38","type":"function","z":"47b91ceb.38a754","name":"Msg factory","func":"// Repeat the msg every 50 milliseconds\nvar repeatInterval = 50;\n\nvar interval = setInterval(function() {\n    var counter = context.get('counter') || 0;\n    counter = counter + 1;\n    \n    node.send({topic: 'mytopic_' + counter});\n    \n    if(counter >= 3000) {\n        clearInterval(interval);\n        counter = 0;\n    }\n    \n    context.set('counter', counter);\n    \n}, repeatInterval); \n\nreturn null;","outputs":1,"noerr":0,"x":453.76568603515625,"y":435.00000762939453,"wires":[["6e086760.71f778"]]},{"id":"da8aea7d.805558","type":"inject","z":"47b91ceb.38a754","name":"","topic":"","payload":"Start","payloadType":"str","repeat":"","crontab":"","once":false,"x":277.7657165527344,"y":435.00000762939453,"wires":[["a50d24c0.afaf38"]]},{"id":"6e086760.71f778","type":"msg-speed","z":"47b91ceb.38a754","name":"","frequency":"min","estimation":false,"ignore":false,"x":650.765625,"y":434.75,"wires":[["a5677c9a.dd884"]]},{"id":"a5677c9a.dd884","type":"ui_chart","z":"47b91ceb.38a754","name":"Messages per minute","group":"1a7f6b0.0560695","order":7,"width":0,"height":0,"label":"Messages per minute","chartType":"line","legend":"false","xformat":"HH:mm:ss","interpolate":"linear","nodata":"Messages per minute","ymin":"0","ymax":"80","removeOlder":"5","removeOlderPoints":"","removeOlderUnit":"60","cutout":0,"colors":["#1f77b4","#aec7e8","#ff7f0e","#2ca02c","#98df8a","#d62728","#ff9896","#9467bd","#c5b0d5"],"x":868.5312423706055,"y":434.5429382324219,"wires":[[],[]]},{"id":"1a7f6b0.0560695","type":"ui_group","z":"","name":"Performance","tab":"18b10517.00400b","disp":true,"width":"6"},{"id":"18b10517.00400b","type":"ui_tab","z":"","name":"Performance","icon":"show_chart"}]
-```
+      
 
 ## Startup period
 The speed is being calculated every second.  As a result there will be a startup period, when the frequency is minute or hour (respectively a startup period of 60 seconds or 3600 seconds).
